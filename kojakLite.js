@@ -95,7 +95,7 @@
                 error: function (err) {
                     window.console.error("[KojakLite] " + err);
                 },
-                makeArguments: function (args) {  
+                makeArguments: function (args) {
                     return Array.prototype.slice.call(args);
                 },
                 setImmediate: function (func) {
@@ -385,6 +385,9 @@
                     },
                     getMeasureName: function () {
                         return "measure_" + this.rand;
+                    },
+                    formatDuration: function (duration) {
+                        return parseFloat(duration.toFixed(2));
                     }
                 });
                 Event.extend = Backbone.View.extend;
@@ -404,7 +407,7 @@
                             duration;
 
                         window.performance.measure(measureName, this.getStartLabel(), this.getEndLabel());
-                        duration = parseFloat(window.performance.getEntriesByName(measureName)[0].duration.toFixed(2));
+                        duration = this.formatDuration(window.performance.getEntriesByName(measureName)[0].duration);
 
                         utils.log(this.getMeasureName(), this.url,":", duration, "ms");
                         return !this.pending ? ["a", this.method, this.url, this.startTime - smTime, duration] : undefined;
@@ -425,7 +428,7 @@
                             duration;
 
                         window.performance.measure(measureName, this.getStartLabel(), this.getEndLabel());
-                        duration = parseFloat(window.performance.getEntriesByName(measureName)[0].duration.toFixed(2));
+                        duration = this.formatDuration(window.performance.getEntriesByName(measureName)[0].duration);
 
                         utils.log(this.getMeasureName(), this.viewName , ": ", duration, "ms");
 
@@ -508,7 +511,7 @@
                                 'observedElementFinish_' + this.rand
                             );
 
-                            this.duration = window.performance.getEntriesByName('observedElement_' + this.rand)[0].duration;
+                            this.duration = this.formatDuration(window.performance.getEntriesByName('observedElement_' + this.rand)[0].duration);
                             this.finalized = true;
 
                             if (this.duration < (KojakLite.config.dropDurationTime || 1)) {
