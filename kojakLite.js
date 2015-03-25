@@ -11,7 +11,7 @@
 }(function(Backbone, _, $) {
 
 
-        var utils = {}; 
+        var utils = {};
 
         initializeKojakLite();
 
@@ -95,7 +95,7 @@
                 error: function (err) {
                     window.console.error("[KojakLite] " + err);
                 },
-                makeArguments: function (args) {          // Make arguments as true array
+                makeArguments: function (args) {  
                     return Array.prototype.slice.call(args);
                 },
                 setImmediate: function (func) {
@@ -341,7 +341,11 @@
                         h = _.isFunction(method.extend) ? method.extend({constructor: h}) : _.extend(h, method);
                         return utils.__super__(object, methodName, e, h);
 
-                    });
+                    }),
+                    getLastElement = function () {
+                        return observedElements[observedElements.length - 1];
+                    },
+                    observedElements = [];
 
 
                 utils.methodChain(utils, "methodChain", "underscore", g);
@@ -363,7 +367,7 @@
                     return superFunc;
                 });
 
-                var Event = window.Event = function () {
+                var Event = function () {
                     this.initialize && this.initialize.apply(this, utils.makeArguments(arguments));
                 };
                 _.extend(Event.prototype, {
@@ -385,7 +389,7 @@
                 });
                 Event.extend = Backbone.View.extend;
 
-                var AjaxEvent = window.AjaxEvent = Event.extend({
+                var AjaxEvent = Event.extend({
                     initialize: function (method, url) {
                         this.method = method;
                         this.url = url;
@@ -407,8 +411,7 @@
                     }
                 });
 
-
-                var RenderEvent = window.RenderEvent = Event.extend({
+                var RenderEvent = Event.extend({
                     initialize: function (viewName) {
                         this.viewName = viewName;
                         this.rand = utils.randomStr(4);
@@ -429,7 +432,6 @@
                         return !this.pending ? ["r", this.viewName, this.startTime - smTime, duration] : undefined;
                     }
                 });
-
 
                 var ObservedElement = Event.extend({
                     initialize: function (klass, method, pattern) {
@@ -550,12 +552,6 @@
                     }
                 });
 
-
-                var observedElements = [],
-                    getLastElement = function () {
-                        return observedElements[observedElements.length - 1];
-                    };
-
                 utils.methodChain(Backbone, "Router", "instrumentation", function () {
 
                     utils.methodChain(this, "route", "instrumentation", function () {
@@ -601,118 +597,76 @@
 
                     return utils.__super__();
                 });
-
-                //utils.methodChain(Backbone, "View", "instrumentation", function () {
-                //    var wrapper = function (eventMethod, methodName) {
-                //        return utils.wrap(eventMethod, function () {
-                //            if (!getLastElement()) {
-                //                var observedElement = new ObservedElement(utils.nameFor(this), methodName);
-                //                utils.setImmediate(function () {
-                //                    observedElement.finalize()
-                //                })
-                //            }
-                //            return utils.__super__()
-                //        });
-                //    };
-                //
-                //    utils.methodChain(this, "initialize", "instrumentation", function () {
-                //        var view;
-                //
-                //        if (!getLastElement()) {
-                //            view = new ObservedElement(utils.nameFor(this), "initialize");
-                //            utils.setImmediate(function () {
-                //                view.finalize()
-                //            });
-                //        }
-                //
-                //        return utils.__super__();
-                //    });
-                //    utils.methodChain(this, "render", "instrumentation", function () {
-                //        var view = getLastElement(),
-                //            renderEvent;
-                //
-                //        if (view) {
-                //            renderEvent = new RenderEvent(utils.nameFor(this));
-                //            view.events.push(renderEvent);
-                //        }
-                //
-                //        if (renderEvent) {
-                //            renderEvent.stop();
-                //        }
-                //
-                //        return utils.__super__();
-                //    });
-                //    utils.methodChain(this, "delegateEvents", "instrumentation", function () {
-                //        var args = utils.makeArguments(arguments),
-                //            events = _.clone(args[0] || _.result(this, "events")),
-                //            eventName, event;
-                //
-                //        for (var key in events) {
-                //            if (events.hasOwnProperty(key)) {
-                //                event = events[key];
-                //                if (_.isFunction(event)) {
-                //                    eventName = "UnnamedAction";
-                //                } else {
-                //                    eventName = event;
-                //                    event = this[event];
-                //                }
-                //                if (!event) {
-                //                    continue;
-                //                }
-                //
-                //                events[key] = wrapper(event, eventName);
-                //            }
-                //        }
-                //
-                //        return utils.__super__(events)
-                //    });
-                //
-                //    return utils.__super__()
-                //});
-
-
                 utils.methodChain(Backbone, "View", "instrumentation", function () {
-                    utils.methodChain(this, "initialize", "instrumentation", function () {
-                        var view;
-
-                        return getLastElement() || (view = new ObservedElement(utils.nameFor(this), "initialize"),
-                            utils.setImmediate(function () {
-                                view.finalize()
-                            })),
-                            utils.__super__()
-                    });
-
-                    utils.methodChain(this, "render", "instrumentation", function () {
-                        var view = getLastElement(),
-                            b;
-
-                        view && (b = new RenderEvent(utils.nameFor(this)), view.events.push(b));     // i render events
-                        var d = utils.__super__();
-                        return b && b.stop(), d
-                    });
-
-                    var b = function (b, c) {
-                        return utils.wrap(b, function () {
+                    var wrapper = function (eventMethod, methodName) {
+                        return utils.wrap(eventMethod, function () {
                             if (!getLastElement()) {
-                                var b = new ObservedElement(utils.nameFor(this), c);
+                                var observedElement = new ObservedElement(utils.nameFor(this), methodName);
                                 utils.setImmediate(function () {
-                                    b.finalize()
+                                    observedElement.finalize()
                                 })
                             }
                             return utils.__super__()
-                        })
+                        });
                     };
 
-                    return utils.methodChain(this, "delegateEvents", "instrumentation", function () {
-                        var d, e, g = utils.makeArguments(arguments), h = _.clone(g[0] || _.result(this, "events"));
-                        for (var i in h)if (h.hasOwnProperty(i)) {
-                            if (e = h[i], _.isFunction(e) ? d = "UnnamedAction" : (d = e, e = this[e]), !e)continue;
-                            h[i] = b(e, d)
-                        }
-                        return utils.__super__(h)
-                    }), utils.__super__()
-                });
+                    utils.methodChain(this, "initialize", "instrumentation", function () {
+                        var view;
 
+                        if (!getLastElement()) {
+                            view = new ObservedElement(utils.nameFor(this), "initialize");
+                            utils.setImmediate(function () {
+                                view.finalize()
+                            });
+                        }
+
+                        return utils.__super__();
+                    });
+                    utils.methodChain(this, "render", "instrumentation", function () {
+                        var view = getLastElement(),
+                            renderEvent,
+                            renderedView;
+
+                        if (view) {
+                            renderEvent = new RenderEvent(utils.nameFor(this));
+                            view.events.push(renderEvent);
+                        }
+
+                        renderedView = utils.__super__();
+                        if (renderEvent) {
+                            renderEvent.stop();
+                        }
+
+                        return renderedView;
+
+                    });
+                    utils.methodChain(this, "delegateEvents", "instrumentation", function () {
+                        var args = utils.makeArguments(arguments),
+                            events = _.clone(args[0] || _.result(this, "events")),
+                            eventName, event;
+
+                        for (var key in events) {
+                            if (events.hasOwnProperty(key)) {
+                                event = events[key];
+                                if (_.isFunction(event)) {
+                                    eventName = "UnnamedAction";
+                                } else {
+                                    eventName = event;
+                                    event = this[event];
+                                }
+                                if (!event) {
+                                    continue;
+                                }
+
+                                events[key] = wrapper(event, eventName);
+                            }
+                        }
+
+                        return utils.__super__(events);
+                    });
+
+                    return utils.__super__();
+                });
 
                 utils.methodChain($, "ajax", "instrumentation", function () {
                     var lastObservedElement = getLastElement();
@@ -762,8 +716,6 @@
                 KojakLite.adapters.Backbone = backboneAdapter;
                 utils.log("Successfully loaded KojakLite.backbone v" + backboneAdapter.VERSION);
             }
-
-
         }
 
         KojakLite.enableMeasuring = function (sessionInfoConfig) {
